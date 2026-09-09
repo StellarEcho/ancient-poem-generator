@@ -14,6 +14,8 @@
 | 主题理解 | `normalize_topic` 是纯本地、零调用的一等模块，产出意象/情绪/标题提示/禁用词 |
 | 兜底 | 预制高质量五字句料 + topic 槽位，构造时即满足结构/汉字/韵脚，杜绝随机拼词 |
 | 合法字符 | 只认 `U+4E00–U+9FFF` 基本区汉字；ASCII、全角、空格、数字、〇、注音、扩展区一律拒绝 |
+| 确定性种子 | 使用 `hashlib.blake2s(topic, digest_size=8)` 的稳定摘要；**绝不使用内置 `hash()`** |
+| 重复整句 | `DUP_LINE` 是**质量警告**，不是合规错误；`ok=True` 但仍上报，供文学性统计 |
 | API 调用 | 普通 chat completions，**不使用 JSON Schema / response_format**，避免过滤掉免费模型 |
 | 工件记录 | 默认静默；`POEM_DEBUG=1` 才落盘；写失败绝不影响返回 |
 | 项目形态 | 单模块小项目 + pypinyin，不上 LangChain、向量库、本地小模型 |
@@ -137,9 +139,12 @@ LINE_COUNT      lines 不是恰好 4 句
 LINE_LEN        某句不是恰好 5 字
 NON_HAN         标题或句子含非基本区汉字字符
 RHYME           第 1、3 句末字韵母不相等
-DUP_LINE        出现重复整句（判不合规）
 EMPTY           标题/句子为空
 ```
+
+`DUP_LINE` 不进入 errors：整句重复时合规仍为 `ok=True`，只在
+`warnings` 中上报 `dup_line`，供文学性统计使用；兜底尽量避开重复，
+但绝不用重复句卡死终态断言。
 
 允许单字重复，但“窗窗窗窗窗”这类极端重复由质量启发式打低分，
 不作为合规错误处理。
@@ -187,7 +192,17 @@ class PoemBrief:
    按 `hash(topic)` 确定性选择。
 4. 组诗：第 1、3 句末字必须同韵；第 2、4 句不强制；四句围绕同一意象群。
 5. 标题从 `title_hints` 或“意象 + 常用题字”拼接，长度 2–4 字，纯汉字。
-6. 用 `hash(topic)` 选句料/标题，同一 topic 稳定可复现，不同 topic 不撞车。
+6. 用稳定摘要 `topic_seed(topic)` 选句料/标题，同一 topic 稳定可复现，
+   不同 topic 不撞车；禁止用内置 `hash()`（带随机盐）：
+
+```python
+import hashlib
+
+def topic_seed(topic: str) -> int:
+    return int.from_bytes(
+        hashlib.blake2s(topic.encode("utf-8"), digest_size=8).digest(), "big"
+    )
+```
 
 质量约束：
 
@@ -239,7 +254,7 @@ Prompt 形态（短、硬、给形态不给文学自由发挥）：
 | 失败类型 | 本地动作 |
 | --- | --- |
 | 仅含非法字符 | 删除标点/空格；全角转半角后丢弃英文与数字；若还能凑成 4×5 纯汉字则接受 |
-| 仅韵脚不匹配 | 保留第 1 句；从同主题、目标韵母的末字/尾字库中替换第 3 句末字 |
+| 仅韵脚不匹配 | 保留第 1 句；只从**白名单尾字库**（按韵母分组、只收诗里常见词）替换第 3 句末字；白名单替换后仍全量校验 |
 | 结构烂（JSON 不可用、句数/字数差太多） | 不硬修，直接兜底 |
 | 修补后仍不合法 | 直接兜底 |
 
@@ -259,6 +274,12 @@ def generate_poem(topic: str) -> dict:
     assert validate_poem(poem).ok
     return poem_with_original_topic(topic, poem)
 ```
+
+离线开关不进对外签名：
+
+- `api.generate_poem(topic)` 保持题目原样，**只有 topic 一个参数**；
+- 无 Key、`POEM_OFFLINE=1`、客户端异常三者都走同一个兜底收口；
+- `cli.py --offline` 只调内部 `harness.run(topic, offline=True)`。
 
 保留但不做重：
 
@@ -312,7 +333,10 @@ for topic in fuzz_topics:            # 空串、纯空格、纯标点、纯数�
 
 默认跑 `--offline` 兜底通道，保证离线确定性。
 
-### E2E：真实 free 路由抽样
+### E2E：真实 free 路由抽样（默认跳过）
+
+标记 `@pytest.mark.network`；没有 `OPENROUTER_API_KEY` 时自动 skip。
+本地无网时，单元 + 假客户端 + `--offline` fuzz 必须全绿。
 
 固定 10 个 topic，每个跑少量次数，记录：
 
@@ -391,6 +415,14 @@ ancient_poem/
 | M2 兜底 | `feat: add topic normalizer and deterministic fallback` | 无网/无 Key 也能输出与 topic 有关联且合规的诗；normalize 与 fallback 单测通过 |
 | M3 接线 | `feat: add parser, local fixer, and model client` + `feat: wire harness and CLI test entry` | 解析→本地修补→单次模型调用→兜底收口；假客户端故障矩阵与 fuzz 通过 |
 | M4 实测 | `test: add fake-client matrix and fuzz` + `docs: usage and run notes` | 真实 `openrouter/free` 固定矩阵抽样，记录延迟/Token/兜底率，锁定默认策略；README 可让验收方直接运行 |
+
+注意：M3 的两个 `feat` 必须拆成两次 commit，不能揉在一起。每次提交后：
+
+```bash
+python -m poem_system.cli --offline 月色
+```
+
+打印的 JSON 必须过校验且退出码为 0。
 
 每个部分结束时的 agent 检查清单：
 
