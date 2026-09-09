@@ -106,6 +106,9 @@ def test_rhyme_error() -> None:
     assert RHYME in validate_poem(poem).errors
 
 
-def test_duplicate_line_error() -> None:
+def test_duplicate_line_is_quality_warning_not_error() -> None:
     poem = dict(VALID, lines=["清辉照晚窗"] * 4)
-    assert DUP_LINE in validate_poem(poem).errors
+    report = validate_poem(poem)
+    assert report.ok is True
+    assert DUP_LINE not in report.errors
+    assert DUP_LINE in report.warnings

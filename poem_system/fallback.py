@@ -84,7 +84,10 @@ _STANZAS: list[_Stanza] = [
 
 
 def _seed(topic: str) -> int:
-    return int.from_bytes(hashlib.sha256(topic.encode("utf-8")).digest()[:8], "big")
+    return int.from_bytes(
+        hashlib.blake2s(topic.encode("utf-8"), digest_size=8).digest(),
+        "big",
+    )
 
 
 def _pick_title(brief: PoemBrief, stanza: _Stanza, seed: int) -> str:

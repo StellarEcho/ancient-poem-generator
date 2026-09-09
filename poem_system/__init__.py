@@ -4,3 +4,7 @@
 """
 
 __version__ = "0.1.0"
+
+from .api import generate_poem  # noqa: E402
+
+__all__ = ["generate_poem"]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .rhyme import rhyme_key
 
@@ -33,14 +33,16 @@ def only_han(text: str) -> bool:
 class ValidationReport:
     ok: bool
     errors: list[str]
+    warnings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict:
-        return {"ok": self.ok, "errors": self.errors}
+        return {"ok": self.ok, "errors": self.errors, "warnings": self.warnings}
 
 
 def validate_poem(poem: object) -> ValidationReport:
     """校验候选诗；收集全部错误码，不只返回 bool。"""
     errors: list[str] = []
+    warnings: list[str] = []
 
     if not isinstance(poem, dict):
         return ValidationReport(ok=False, errors=[WRONG_TYPE])
@@ -77,7 +79,7 @@ def validate_poem(poem: object) -> ValidationReport:
             text_lines.append(line)
 
         if len(text_lines) == 4 and len(set(text_lines)) != 4:
-            errors.append(DUP_LINE)
+            warnings.append(DUP_LINE)
 
         if (
             len(text_lines) == 4
@@ -97,7 +99,17 @@ def validate_poem(poem: object) -> ValidationReport:
         if code not in seen:
             seen.add(code)
             unique_errors.append(code)
-    return ValidationReport(ok=not unique_errors, errors=unique_errors)
+    seen_warnings: set[str] = set()
+    unique_warnings: list[str] = []
+    for code in warnings:
+        if code not in seen_warnings:
+            seen_warnings.add(code)
+            unique_warnings.append(code)
+    return ValidationReport(
+        ok=not unique_errors,
+        errors=unique_errors,
+        warnings=unique_warnings,
+    )
 
 
 def validate_structure_and_rhyme(title: str, lines: list[str]) -> ValidationReport:
