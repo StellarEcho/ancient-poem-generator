@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from .fallback import basic_fallback_poem
+from .fallback import fallback_poem
+from .normalize import normalize_topic
 
 
 def generate_poem(topic: str) -> dict:
@@ -14,7 +15,8 @@ def generate_poem(topic: str) -> dict:
     if not isinstance(topic, str):
         raise TypeError("topic 必须是字符串")
 
-    poem = basic_fallback_poem(topic)
+    brief = normalize_topic(topic)
+    poem = fallback_poem(brief)
     return {
         "topic": topic,
         "title": poem["title"],  # type: ignore[assignment]
