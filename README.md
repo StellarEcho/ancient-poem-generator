@@ -8,7 +8,7 @@
 ## 当前状态
 
 - 需求与完整 Agent Harness 架构规划见
-  [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)。
+  [PLAN.md](PLAN.md)（评审修订版）。
 - 实现代码尚未开始（规划阶段）。
 
 ## 设计原则
