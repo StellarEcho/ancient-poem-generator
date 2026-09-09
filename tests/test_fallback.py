@@ -1,7 +1,7 @@
 """确定性兜底测试。"""
 
 from poem_system.api import generate_poem
-from poem_system.fallback import fallback_poem
+from poem_system.fallback import fallback_poem, topic_seed
 from poem_system.normalize import normalize_topic
 from poem_system.validate import validate_poem
 
@@ -48,3 +48,9 @@ def test_fallback_varies_across_categories() -> None:
         for topic in ["月色", "Mars Return", "2026年的第一场雪", "海", "春", "送别"]
     }
     assert len(poems) >= 3
+
+
+def test_topic_seed_is_stable_and_distinct() -> None:
+    assert topic_seed("月色") == topic_seed("月色")
+    assert topic_seed("Mars Return") == topic_seed("Mars Return")
+    assert topic_seed("月色") != topic_seed("Mars Return")

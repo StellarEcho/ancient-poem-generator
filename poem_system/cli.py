@@ -13,7 +13,8 @@ import argparse
 import json
 import sys
 
-from .api import generate_poem
+from .harness import run_harness
+from .validate import validate_poem
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -44,8 +45,19 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     for topic in topics:
-        result = generate_poem(topic)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        result = run_harness(topic, offline=args.offline, debug=args.verbose)
+        print(json.dumps(result.poem, ensure_ascii=False, indent=2))
+        report = validate_poem(result.poem)
+        if not report.ok:
+            print(f"不合规: {report.errors}", file=sys.stderr)
+            return 1
+        if args.verbose:
+            print(
+                f"# source={result.source} calls={result.model_calls} "
+                f"latency_ms={result.latency_ms:.1f} "
+                f"errors={report.errors} warnings={report.warnings}",
+                file=sys.stderr,
+            )
     return 0
 
 

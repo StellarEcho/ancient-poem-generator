@@ -83,7 +83,8 @@ _STANZAS: list[_Stanza] = [
 ]
 
 
-def _seed(topic: str) -> int:
+def topic_seed(topic: str) -> int:
+    """跨进程稳定的主题种子：禁止内置 hash()（随机盐）。"""
     return int.from_bytes(
         hashlib.blake2s(topic.encode("utf-8"), digest_size=8).digest(),
         "big",
@@ -106,7 +107,7 @@ def fallback_poem(brief: PoemBrief) -> dict:
     best = max(score for score, _ in scored)
     pool = [stanza for score, stanza in scored if score == best]
 
-    seed = _seed(brief.raw)
+    seed = topic_seed(brief.raw)
     stanza = pool[seed % len(pool)]
     return {
         "title": _pick_title(brief, stanza, seed),

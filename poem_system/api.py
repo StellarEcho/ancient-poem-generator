@@ -2,23 +2,26 @@
 
 from __future__ import annotations
 
-from .fallback import fallback_poem
-from .normalize import normalize_topic
+import os
+
+from .harness import run_harness
+
+
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def generate_poem(topic: str) -> dict:
     """根据 topic 生成一首四句五言古诗。
 
-    M0 阶段：整条流程走确定性兜底，保证接口可运行；
-    M3 开始接入“一次 LLM 生成 + 本地修补 + 兜底收口”。
+    保持题目给定的单参数签名。内部遵循：
+    - 无 OPENROUTER_API_KEY、POEM_OFFLINE=1 或客户端异常 → 同一兜底；
+    - 不重试、不暴露调试参数。
     """
     if not isinstance(topic, str):
         raise TypeError("topic 必须是字符串")
-
-    brief = normalize_topic(topic)
-    poem = fallback_poem(brief)
-    return {
-        "topic": topic,
-        "title": poem["title"],  # type: ignore[assignment]
-        "lines": poem["lines"],  # type: ignore[assignment]
-    }
+    return run_harness(
+        topic,
+        offline=_env_flag("POEM_OFFLINE"),
+        debug=_env_flag("POEM_DEBUG"),
+    ).poem
