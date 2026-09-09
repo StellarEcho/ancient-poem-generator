@@ -4,14 +4,26 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
 import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
+try:
+    import certifi
+except ImportError:  # 无 certifi 时退回 Python 默认证书链
+    certifi = None
+
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODEL = "openrouter/free"
 KEY_ENV = "OPENROUTER_API_KEY"
+
+
+def _ssl_context() -> ssl.SSLContext:
+    if certifi is not None:
+        return ssl.create_default_context(cafile=certifi.where())
+    return ssl.create_default_context()
 
 
 @dataclass
@@ -60,7 +72,11 @@ class ModelClient:
 
         started = time.perf_counter()
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
+            with urllib.request.urlopen(
+                request,
+                timeout=self.timeout_s,
+                context=_ssl_context(),
+            ) as response:
                 raw = response.read(self.max_response_bytes + 1)
             latency_ms = (time.perf_counter() - started) * 1000
             if len(raw) > self.max_response_bytes:
