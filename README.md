@@ -75,6 +75,8 @@ OPENROUTER_API_KEY=xxx python scripts/run_free_route_experiment.py \
 
 已积累的失败模式与结论见
 [experiments/FREE_ROUTE_FINDINGS.md](experiments/FREE_ROUTE_FINDINGS.md)。
+注意 OpenRouter 免费档每天约 50 次免费模型请求，额度用完后返回 HTTP 429，
+次日 08:00（北京时间）重置；此时系统会自动走本地兜底。
 
 环境变量：
 

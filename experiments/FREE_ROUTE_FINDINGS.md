@@ -36,9 +36,22 @@
 
 说明：批次 2 全部请求都在上游被限流，返回信息类似
 `Provider returned error / temporarily rate-limited upstream ... add your own key`。
+后续单独复测确认，这不是短暂冷却，而是免费档的**每日配额**：
+
+```text
+Rate limit exceeded: free-models-per-day.
+Add 10 credits to unlock 1000 free model requests per day
+X-RateLimit-Limit: 50
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1789084800000  (2026-09-11 08:00 Asia/Shanghai)
+```
+
+即：每个免费 Key 每天最多约 50 次免费模型请求，当天用完后需等到次日
+08:00（北京时间）重置，或在 OpenRouter 账户充值 10 credits 解锁 1000 次/天。
+
 因此无法用这批数据评价并发数本身的影响，但可以确认两件事：
 
-1. 免费 Key 存在明显的上游配额/冷却期，连续大批量请求会整体进入 429；
+1. 免费 Key 存在每日 50 次的硬配额，连续大批量请求会整体进入 429；
 2. 限流发生时系统以约 0.5s 完成降级，仍然 100% 返回合规结果。
 
 ## 已观察到的失败模式
@@ -65,6 +78,8 @@
    路由选择，只能靠本地解析与兜底收口。
 5. 两批 144 次运行中，最终结果合规率 100%；所有失败都在返回前被
    本地兜底吸收。
+6. 大批量实验需要按天分批；复测前先看 429 响应的
+   `X-RateLimit-Remaining`，避免整天都处于限流状态。
 
 ## 复现
 
