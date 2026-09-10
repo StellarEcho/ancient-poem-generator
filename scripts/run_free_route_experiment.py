@@ -1,7 +1,8 @@
-"""批量采样 openrouter/free，积累不同输入下的返回特性与失败模式。
+"""批量采样模型（当前阶段为 DeepSeek flash），积累返回特性与失败模式。
 
 用法：
-    OPENROUTER_API_KEY=xxx python scripts/run_free_route_experiment.py \
+    DEEPSEEK_API_KEY=xxx POEM_PROVIDER=deepseek \
+    python scripts/run_free_route_experiment.py \
         --repeats 2 --concurrency 3 --timeout 15
 
 输出（默认 artifacts/experiments/free_route_<timestamp>/）：
@@ -133,6 +134,7 @@ def _run_one(
         "repeat": repeat,
         "topic": topic,
         "topic_repr": repr(topic),
+        "provider": result.provider,
         "source": result.source,
         "failure_bucket": _failure_bucket(result),
         "model_ok": result.model_ok,
@@ -170,6 +172,7 @@ def _summarize(records: list[dict], config: dict, started_at: str) -> dict:
         "finished_at": datetime.now().isoformat(timespec="seconds"),
         "total_runs": len(records),
         "sources": dict(Counter(r["source"] for r in records)),
+        "providers": dict(Counter(r["provider"] for r in records if r["provider"])),
         "failure_buckets": dict(Counter(r["failure_bucket"] for r in records)),
         "model_used": dict(
             Counter(r["model_used"] for r in records if r["model_used"])
@@ -213,8 +216,9 @@ def _summarize(records: list[dict], config: dict, started_at: str) -> dict:
 
 def _write_summary_md(path: Path, summary: dict) -> None:
     lines = [
-        "# openrouter/free 批量采样报告",
+        "# 模型批量采样报告",
         "",
+        f"- provider：{summary['config'].get('provider')}",
         f"- 开始：{summary['started_at']}",
         f"- 结束：{summary['finished_at']}",
         f"- 总运行：{summary['total_runs']}",
@@ -245,8 +249,11 @@ def _write_summary_md(path: Path, summary: dict) -> None:
 
 def main() -> int:
     args = parse_args()
-    if not os.environ.get("OPENROUTER_API_KEY"):
-        print("OPENROUTER_API_KEY 未设置", file=sys.stderr)
+    if not (
+        os.environ.get("DEEPSEEK_API_KEY")
+        or os.environ.get("OPENROUTER_API_KEY")
+    ):
+        print("DEEPSEEK_API_KEY / OPENROUTER_API_KEY 均未设置", file=sys.stderr)
         return 2
 
     tasks: list[tuple[int, str, str, int]] = []
@@ -295,6 +302,7 @@ def main() -> int:
                     completed += 1
                     print(
                         f"[{completed}/{len(tasks)}] {record['topic_repr']} "
+                        f"provider={record['provider']} "
                         f"source={record['source']} "
                         f"bucket={record['failure_bucket']} "
                         f"model={record['model_used']} "
@@ -307,6 +315,7 @@ def main() -> int:
                 print("已中断，写出部分结果", file=sys.stderr)
 
     config = {
+        "provider": os.environ.get("POEM_PROVIDER") or "auto",
         "repeats": args.repeats,
         "concurrency": args.concurrency,
         "timeout_s": args.timeout,
