@@ -62,6 +62,20 @@ python -m pytest -q                      # 单元 + 假客户端 + 离线 fuzz�
 OPENROUTER_API_KEY=xxx python -m pytest -m network -q   # 真实免费路由冒烟
 ```
 
+## 免费路由批量采样
+
+```bash
+OPENROUTER_API_KEY=xxx python scripts/run_free_route_experiment.py \
+    --repeats 3 --concurrency 3 --timeout 15
+```
+
+输出在 `artifacts/experiments/free_route_<timestamp>/`：
+`runs.jsonl`（每次运行）、`summary.json`、`summary.md`。
+常用 topic、英文/数字/emoji/超长文本等 edge case 都在固定矩阵内。
+
+已积累的失败模式与结论见
+[experiments/FREE_ROUTE_FINDINGS.md](experiments/FREE_ROUTE_FINDINGS.md)。
+
 环境变量：
 
 - `OPENROUTER_API_KEY`：真实模型调用；
