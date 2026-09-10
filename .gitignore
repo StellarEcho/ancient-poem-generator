@@ -5,6 +5,12 @@
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+credentials*.json
+secrets/
+.secrets/
 
 # Python
 __pycache__/
