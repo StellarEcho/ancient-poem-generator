@@ -67,7 +67,19 @@ def test_fallback_line3_candidates_match_target_rhyme() -> None:
 
 def test_extra_line3_candidates_cover_observed_missing_finals() -> None:
     brief = normalize_topic("")
-    for target in ["van", "ie", "in", "ua", "en", "uei", "eng", "ing"]:
+    for target in [
+        "van",
+        "ie",
+        "in",
+        "ua",
+        "en",
+        "uei",
+        "eng",
+        "ing",
+        "vn",
+        "e",
+        "ao",
+    ]:
         candidates = fallback_line3_candidates(brief, target)
         assert candidates, target
         for line in candidates:

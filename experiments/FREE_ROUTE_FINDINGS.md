@@ -103,23 +103,24 @@ python scripts/run_free_route_experiment.py --repeats 2 --concurrency 3 --timeou
 ```
 
 模型固定为 `deepseek-flash`，`thinking.type=disabled`，因此 usage 中不再出现
-reasoning tokens。两个对照批次（各 72 次，同一 topic 矩阵）：
+reasoning tokens。三个对照批次（各 72 次，同一 topic 矩阵）：
 
-| 指标 | 增强本地修补前 | 增强本地修补后 |
-| --- | --- | --- |
-| 模型直接采用 | 63 / 72（87.5%） | 70 / 72（97.2%） |
-| 走兜底 | 9 | 2 |
-| 解析成功率 | 100% | 100% |
-| 本地修补触发率 | 41.7% | 54.2% |
-| 端到端 p50 | 1.01s | 1.58s |
-| 端到端 p90 | 1.48s | 2.50s |
-| 平均 Token | 214.3 | 214.5 |
-| 命中模型 | 全部 deepseek-flash | 全部 deepseek-flash |
+| 指标 | 初始 | 增强本地修补 | 补齐全部韵母后（最终） |
+| --- | --- | --- | --- |
+| 模型直接采用 | 63 / 72（87.5%） | 70 / 72（97.2%） | 72 / 72（100%） |
+| 走兜底 | 9 | 2 | 0 |
+| 解析成功率 | 100% | 100% | 100% |
+| 本地修补触发率 | 41.7% | 54.2% | 59.7% |
+| 端到端 p50 | 1.01s | 1.58s | 0.92s |
+| 端到端 p90 | 1.48s | 2.50s | 1.18s |
+| 平均 Token | 214.3 | 214.5 | 214.3 |
+| 命中模型 | deepseek-flash | deepseek-flash | deepseek-flash |
 
 观察：
 
 1. DeepSeek flash 的可用性显著高于免费路由，两批均无 429/超时；
 2. 关闭思考后单次约 200 Token、约 1–2.5s，适合批量实验；
-3. 剩余兜底主要来自少数结构/韵脚无法本地修复的输出；
+3. 补齐 `van / ie / in / ua / en / uei / vn / e / ao` 等整句白名单后，
+   最终批次 72/72 由模型路径收口，未触发兜底；
 4. 提交验收仍默认 `POEM_PROVIDER=openrouter`（不设该变量即默认），
    DeepSeek 只在显式指定时启用。

@@ -131,3 +131,36 @@ def test_ie_rhyme_fixed_by_generic_line3_bank() -> None:
     assert fixed is not None
     assert validate_poem(fixed).ok
     assert rhyme_key(fixed["lines"][2][-1]) == "ie"
+
+
+def test_vn_rhyme_fixed_by_generic_line3_bank() -> None:
+    poem = {
+        "title": "草原辽阔情",
+        "lines": ["草原风卷云", "天边远影分", "云动心自远", "地阔意难群"],
+    }
+    fixed = fix_poem(poem, normalize_topic("草原"))
+    assert fixed is not None
+    assert validate_poem(fixed).ok
+    assert rhyme_key(fixed["lines"][2][-1]) == "vn"
+
+
+def test_e_rhyme_fixed_by_generic_line3_bank() -> None:
+    poem = {
+        "title": "孤灯客思",
+        "lines": ["孤灯照夜客", "寒影伴人愁", "客心随月远", "独坐数更筹"],
+    }
+    fixed = fix_poem(poem, normalize_topic("AI时代的孤独"))
+    assert fixed is not None
+    assert validate_poem(fixed).ok
+    assert rhyme_key(fixed["lines"][2][-1]) == "e"
+
+
+def test_ao_rhyme_fixed_by_generic_line3_bank() -> None:
+    poem = {
+        "title": "草原风远",
+        "lines": ["风吹草浪高", "云影掠平皋", "远天连碧霄", "心随雁阵遥"],
+    }
+    fixed = fix_poem(poem, normalize_topic("草原"))
+    assert fixed is not None
+    assert validate_poem(fixed).ok
+    assert rhyme_key(fixed["lines"][2][-1]) == "ao"
