@@ -84,6 +84,13 @@ class HarnessResult:
     latency_ms: float
     model_used: str | None = None
     raw_model_content: str | None = None
+    model_error: str | None = None
+    model_usage: dict | None = None
+    model_latency_ms: float | None = None
+    model_ok: bool = False
+    parse_ok: bool = False
+    local_fix_ok: bool = False
+    local_fix_changed: bool = False
     validation: ValidationReport = field(default_factory=lambda: ValidationReport(True, []))
 
 
@@ -106,6 +113,9 @@ def run_harness(
     source = "fallback"
     model_calls = 0
     raw_result: RawModelResult | None = None
+    parse_ok = False
+    local_fix_ok = False
+    local_fix_changed = False
 
     if not offline:
         client: object | None = model_client
@@ -118,8 +128,16 @@ def run_harness(
             except Exception as exc:
                 raw_result = RawModelResult(ok=False, error=f"{type(exc).__name__}: {exc}")
             if raw_result.ok:
-                poem = fix_poem(parse_candidate(raw_result.content), brief)
-                if poem is not None and validate_poem(poem).ok:
+                parsed = parse_candidate(raw_result.content)
+                parse_ok = parsed is not None
+                poem = fix_poem(parsed, brief)
+                local_fix_ok = poem is not None
+                if isinstance(parsed, dict) and poem is not None:
+                    local_fix_changed = (
+                        parsed.get("title") != poem.get("title")
+                        or parsed.get("lines") != poem.get("lines")
+                    )
+                if local_fix_ok and validate_poem(poem).ok:
                     source = "model"
 
     if poem is None:
@@ -145,6 +163,13 @@ def run_harness(
         latency_ms=latency_ms,
         model_used=raw_result.model if raw_result else None,
         raw_model_content=raw_result.content if raw_result else None,
+        model_error=raw_result.error if raw_result else None,
+        model_usage=raw_result.usage if raw_result else None,
+        model_latency_ms=raw_result.latency_ms if raw_result else None,
+        model_ok=raw_result.ok if raw_result else False,
+        parse_ok=parse_ok,
+        local_fix_ok=local_fix_ok,
+        local_fix_changed=local_fix_changed,
         validation=report,
     )
 
@@ -157,6 +182,11 @@ def run_harness(
             latency_ms=latency_ms,
             model_used=result.model_used,
             raw_model_content=result.raw_model_content,
+            model_error=result.model_error,
+            model_usage=result.model_usage,
+            parse_ok=result.parse_ok,
+            local_fix_ok=result.local_fix_ok,
+            local_fix_changed=result.local_fix_changed,
             validation_errors=report.errors,
             validation_warnings=report.warnings,
         )

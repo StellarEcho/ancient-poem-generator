@@ -86,6 +86,9 @@ def test_line_length(line: str) -> None:
         "清辉　照晚",  # 全角空格
         "清辉照晚〇",
         "清辉照晚ㄅ",  # 注音符号
+        "清辉照晚Ａ",  # 全角字母
+        "清辉照晚\u00a0",  # 不换行空格
+        "清辉照晚\u200d",  # 零宽连接符
         "清辉照\uD841\uDF00",  # 扩展区生僻字（代理对）
     ],
 )
@@ -112,3 +115,4 @@ def test_duplicate_line_is_quality_warning_not_error() -> None:
     assert report.ok is True
     assert DUP_LINE not in report.errors
     assert DUP_LINE in report.warnings
+    assert report.as_dict()["warnings"] == [DUP_LINE]

@@ -23,6 +23,11 @@ class DebugRecorder:
         latency_ms: float,
         model_used: str | None = None,
         raw_model_content: str | None = None,
+        model_error: str | None = None,
+        model_usage: dict | None = None,
+        parse_ok: bool = False,
+        local_fix_ok: bool = False,
+        local_fix_changed: bool = False,
         validation_errors: list[str] | None = None,
         validation_warnings: list[str] | None = None,
     ) -> Path | None:
@@ -41,6 +46,11 @@ class DebugRecorder:
                 "latency_ms": round(latency_ms, 3),
                 "model_used": model_used,
                 "raw_model_content": raw_model_content,
+                "model_error": model_error,
+                "model_usage": model_usage,
+                "parse_ok": parse_ok,
+                "local_fix_ok": local_fix_ok,
+                "local_fix_changed": local_fix_changed,
                 "validation_errors": validation_errors or [],
                 "validation_warnings": validation_warnings or [],
             }
@@ -52,5 +62,6 @@ class DebugRecorder:
             )
             tmp.replace(target)
             return target
-        except OSError:
+        except Exception:
+            # 记录失败绝不能影响生成结果。
             return None

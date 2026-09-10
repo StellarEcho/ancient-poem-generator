@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 import ssl
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -56,6 +58,26 @@ class ModelClient:
         if not api_key:
             return RawModelResult(ok=False, error="MISSING_API_KEY")
 
+        # urlopen 的 timeout 偶发兜不住挂死的 SSL read，这里再加一层
+        # 硬看门狗：超时立刻返回，由 Harness 走确定性兜底。
+        results: queue.Queue[RawModelResult] = queue.Queue(maxsize=1)
+
+        def worker() -> None:
+            try:
+                results.put(self._request(api_key, messages))
+            except Exception as exc:
+                results.put(
+                    RawModelResult(ok=False, error=f"{type(exc).__name__}: {exc}")
+                )
+
+        thread = threading.Thread(target=worker, daemon=True)
+        thread.start()
+        try:
+            return results.get(timeout=self.timeout_s + 0.5)
+        except queue.Empty:
+            return RawModelResult(ok=False, error="TIMEOUT")
+
+    def _request(self, api_key: str, messages: list[dict]) -> RawModelResult:
         payload = {
             "model": OPENROUTER_MODEL,
             "messages": messages,
@@ -85,7 +107,23 @@ class ModelClient:
                     latency_ms=latency_ms,
                     error="LARGE_RESPONSE",
                 )
-            data = json.loads(raw.decode("utf-8"))
+            try:
+                data = json.loads(raw.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                return RawModelResult(
+                    ok=False,
+                    latency_ms=latency_ms,
+                    error=f"BAD_JSON: {type(exc).__name__}: {exc}",
+                )
+            if "choices" not in data:
+                snippet = json.dumps(data, ensure_ascii=True)[:300]
+                return RawModelResult(
+                    ok=False,
+                    model=data.get("model"),
+                    usage=data.get("usage"),
+                    latency_ms=latency_ms,
+                    error=f"NO_CHOICES: {snippet}",
+                )
             content = data["choices"][0]["message"]["content"]
             if not isinstance(content, str) or not content.strip():
                 return RawModelResult(

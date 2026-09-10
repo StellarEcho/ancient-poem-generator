@@ -75,3 +75,36 @@ def test_line_with_embedded_english_and_number_is_cleaned() -> None:
     fixed = fix_poem(poem, normalize_topic("AI时代的孤独"))
     assert fixed is not None
     assert validate_poem(fixed).ok
+
+
+def test_arbitrary_same_rhyme_char_not_used() -> None:
+    poem = {
+        "title": "月下清辉",
+        "lines": ["清辉照晚窗", "疏影过回廊", "客梦落寒翁", "孤灯夜未央"],
+    }
+    fixed = fix_poem(poem, normalize_topic("月色"))
+    assert fixed is not None
+    assert validate_poem(fixed).ok
+    assert "翁" not in fixed["lines"][2]
+
+
+def test_ong_rhyme_fixed_by_whitelist_suffix() -> None:
+    poem = {
+        "title": "夜行",
+        "lines": ["星光照夜空", "雁影随风去", "远山映日光", "乡音悠悠声"],
+    }
+    fixed = fix_poem(poem, normalize_topic("冬夜"))
+    assert fixed is not None
+    assert validate_poem(fixed).ok
+    assert fixed["lines"][2] == "远山映长空"
+
+
+def test_iou_rhyme_fixed_by_curated_line3() -> None:
+    poem = {
+        "title": "夜山孤灯",
+        "lines": ["夜静远山幽", "孤灯照客舟", "云归山影收", "风送一江秋"],
+    }
+    fixed = fix_poem(poem, normalize_topic("夜色"))
+    assert fixed is not None
+    assert validate_poem(fixed).ok
+    assert fixed["lines"][2] == "客心何处留"

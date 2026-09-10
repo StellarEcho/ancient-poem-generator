@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .fallback import fallback_poem
+from .fallback import fallback_line3_candidates
 from .normalize import PoemBrief
 from .rhyme import rhyme_key
 from .validate import RHYME, is_han, only_han, validate_poem
@@ -19,6 +19,8 @@ _SUFFIXES: dict[str, tuple[str, ...]] = {
     "iang": ("寒江", "秋江", "夜江"),
     "eng": ("寒灯", "夜灯", "青灯"),
     "ing": ("夜星", "寒星", "长亭"),
+    "ong": ("长空", "晚钟", "归鸿", "青松", "江东"),
+    "iou": ("清秋", "深秋", "长留"),
     "u": ("江渚", "远树", "古树"),
     "v": ("夜雨", "秋雨", "故雨"),
 }
@@ -41,6 +43,15 @@ def _clean_line(value: object) -> str | None:
 
 
 def _with_valid_rhyme(lines: list[str], target_key: str, brief: PoemBrief) -> list[str] | None:
+    # 第一优先：句料库里同韵、同意象的完整第 3 句（最自然）。
+    for candidate in fallback_line3_candidates(brief, target_key):
+        candidate_lines = [lines[0], lines[1], candidate, lines[3]]
+        if len(set(candidate_lines)) != 4:
+            continue
+        if validate_poem({"title": "暂定", "lines": candidate_lines}).ok:
+            return candidate_lines
+
+    # 第二优先：白名单尾词替换（只换末两字，仍过全量校验）。
     prefix = lines[2][:3]
     for suffix in _SUFFIXES.get(target_key, ()):
         candidate_lines = [lines[0], lines[1], prefix + suffix, lines[3]]
@@ -53,14 +64,6 @@ def _with_valid_rhyme(lines: list[str], target_key: str, brief: PoemBrief) -> li
             continue
         if validate_poem({"title": "暂定", "lines": candidate_lines}).ok:
             return candidate_lines
-
-    # 白名单之外：用同一主题兜底句料里的第 3 句收口。
-    fallback_line3 = fallback_poem(brief)["lines"][2]
-    candidate_lines = [lines[0], lines[1], fallback_line3, lines[3]]
-    if len(set(candidate_lines)) == 4 and validate_poem(
-        {"title": "暂定", "lines": candidate_lines}
-    ).ok:
-        return candidate_lines
     return None
 
 

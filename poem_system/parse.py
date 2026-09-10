@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 
-_HAN5 = re.compile(r"[\u4e00-\u9fff]{5}")
+_HAN5 = re.compile(r"(?<![\u4e00-\u9fff])[\u4e00-\u9fff]{5}(?![\u4e00-\u9fff])")
 _HAN_TITLE = re.compile(r"[\u4e00-\u9fff]{2,8}")
 
 

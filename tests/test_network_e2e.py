@@ -23,6 +23,12 @@ _NEEDS_KEY = pytest.mark.skipif(
     "topic",
     [
         "月色",
+        "梅花",
+        "湖上",
+        "黄昏",
+        "相思",
+        "新年",
+        "星河",
         "Mars Return",
         "2026年的第一场雪",
         "AI时代的孤独",

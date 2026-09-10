@@ -46,7 +46,11 @@ def main(argv: list[str] | None = None) -> int:
 
     for topic in topics:
         result = run_harness(topic, offline=args.offline, debug=args.verbose)
-        print(json.dumps(result.poem, ensure_ascii=False, indent=2))
+        try:
+            print(json.dumps(result.poem, ensure_ascii=False, indent=2))
+        except UnicodeEncodeError:
+            # 极端 topic（如孤立代理字符）只影响展示，不影响返回值本身。
+            print(json.dumps(result.poem, ensure_ascii=True, indent=2))
         report = validate_poem(result.poem)
         if not report.ok:
             print(f"不合规: {report.errors}", file=sys.stderr)

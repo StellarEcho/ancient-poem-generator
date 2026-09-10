@@ -119,3 +119,63 @@ def test_offline_never_calls_model() -> None:
     assert client.calls == 0
     assert result.source == "fallback"
     assert validate_poem(result.poem).ok is True
+
+
+def test_overlong_title_is_replaced_by_brief_hint() -> None:
+    raw = (
+        '{"title":"明月清风夜未央明灯","lines":["清辉照晚窗",'
+        '"疏影过回廊","客梦落寒霜","孤灯夜未央"]}'
+    )
+    client = FakeClient([_ok(raw)])
+    result = run_harness("月色", model_client=client)
+    assert result.source == "model"
+    assert result.poem["title"] == "月夜"
+    assert validate_poem(result.poem).ok is True
+
+
+def test_extra_json_keys_are_ignored() -> None:
+    raw = (
+        '{"topic":"雅题","note":"extra","title":"月下清辉",'
+        '"lines":["清辉照晚窗","疏影过回廊","客梦落寒霜","孤灯夜未央"]}'
+    )
+    client = FakeClient([_ok(raw)])
+    result = run_harness("月色", model_client=client)
+    assert result.source == "model"
+    assert result.poem["topic"] == "月色"
+
+
+def test_five_lines_falls_back() -> None:
+    raw = (
+        '{"title":"月下清辉","lines":["清辉照晚窗","疏影过回廊",'
+        '"客梦落寒霜","孤灯夜未央","明月出东山"]}'
+    )
+    client = FakeClient([_ok(raw)])
+    result = run_harness("月色", model_client=client)
+    assert result.source == "fallback"
+    assert validate_poem(result.poem).ok is True
+
+
+def test_lines_as_object_falls_back() -> None:
+    raw = '{"title":"月下清辉","lines":{"1":"清辉照晚窗"}}'
+    client = FakeClient([_ok(raw)])
+    result = run_harness("月色", model_client=client)
+    assert result.source == "fallback"
+    assert validate_poem(result.poem).ok is True
+
+
+def test_two_megabyte_model_content_falls_back() -> None:
+    client = FakeClient([_ok("月" * 2_000_000)])
+    result = run_harness("月色", model_client=client)
+    assert result.source == "fallback"
+    assert validate_poem(result.poem).ok is True
+
+
+def test_markdown_and_punctuation_inside_lines_is_repaired() -> None:
+    raw = (
+        '{"title":"《月下清辉》","lines":["清辉照晚窗。","疏影过回廊，",'
+        '"客梦落寒霜！","孤灯夜未央"]}'
+    )
+    client = FakeClient([_ok(raw)])
+    result = run_harness("月色", model_client=client)
+    assert result.source == "model"
+    assert validate_poem(result.poem).ok is True
