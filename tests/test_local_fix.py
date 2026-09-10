@@ -2,6 +2,7 @@
 
 from poem_system.local_fix import fix_poem
 from poem_system.normalize import normalize_topic
+from poem_system.rhyme import rhyme_key
 from poem_system.validate import validate_poem
 
 
@@ -96,7 +97,7 @@ def test_ong_rhyme_fixed_by_whitelist_suffix() -> None:
     fixed = fix_poem(poem, normalize_topic("冬夜"))
     assert fixed is not None
     assert validate_poem(fixed).ok
-    assert fixed["lines"][2] == "远山映长空"
+    assert rhyme_key(fixed["lines"][2][-1]) == "ong"
 
 
 def test_iou_rhyme_fixed_by_curated_line3() -> None:
@@ -107,4 +108,26 @@ def test_iou_rhyme_fixed_by_curated_line3() -> None:
     fixed = fix_poem(poem, normalize_topic("夜色"))
     assert fixed is not None
     assert validate_poem(fixed).ok
-    assert fixed["lines"][2] == "客心何处留"
+    assert rhyme_key(fixed["lines"][2][-1]) == "iou"
+
+
+def test_van_rhyme_fixed_by_generic_line3_bank() -> None:
+    poem = {
+        "title": "晚霞苍茫",
+        "lines": ["晚霞映山远", "孤云逐日飞", "暮色染林晚", "苍茫何处归"],
+    }
+    fixed = fix_poem(poem, normalize_topic("黄昏"))
+    assert fixed is not None
+    assert validate_poem(fixed).ok
+    assert rhyme_key(fixed["lines"][2][-1]) == "van"
+
+
+def test_ie_rhyme_fixed_by_generic_line3_bank() -> None:
+    poem = {
+        "title": "冬夜寄春",
+        "lines": ["寒雪落长夜", "孤灯照旧年", "北风动远天", "梅影待春烟"],
+    }
+    fixed = fix_poem(poem, normalize_topic("2026年的第一场雪"))
+    assert fixed is not None
+    assert validate_poem(fixed).ok
+    assert rhyme_key(fixed["lines"][2][-1]) == "ie"

@@ -6,7 +6,13 @@ import json
 import time
 
 from poem_system import client as client_module
-from poem_system.client import ModelClient, RawModelResult
+from poem_system.client import (
+    DEEPSEEK_MODEL,
+    DeepSeekClient,
+    ModelClient,
+    RawModelResult,
+    create_client,
+)
 
 
 def test_missing_key(monkeypatch) -> None:
@@ -88,3 +94,44 @@ def test_bad_json_is_classified(monkeypatch) -> None:
     result = ModelClient(api_key="test-key")._request("test-key", [])
     assert result.ok is False
     assert (result.error or "").startswith("BAD_JSON")
+
+
+def test_deepseek_uses_flash_and_disables_thinking(monkeypatch) -> None:
+    monkeypatch.delenv("DEEPSEEK_THINKING", raising=False)
+    payload = DeepSeekClient(api_key="test-key")._build_payload(
+        [{"role": "user", "content": "hi"}]
+    )
+    assert payload["model"] == DEEPSEEK_MODEL == "deepseek-flash"
+    assert payload["thinking"] == {"type": "disabled"}
+    assert payload["max_tokens"] > 0
+
+
+def test_deepseek_thinking_can_be_left_auto(monkeypatch) -> None:
+    monkeypatch.setenv("DEEPSEEK_THINKING", "auto")
+    payload = DeepSeekClient(api_key="test-key")._build_payload([])
+    assert "thinking" not in payload
+
+
+def test_create_client_prefers_deepseek(monkeypatch) -> None:
+    monkeypatch.setenv("POEM_PROVIDER", "deepseek")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    client = create_client()
+    assert isinstance(client, DeepSeekClient)
+    assert client.provider_name == "deepseek"
+
+
+def test_create_client_returns_none_without_keys(monkeypatch) -> None:
+    monkeypatch.delenv("POEM_PROVIDER", raising=False)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    assert create_client() is None
+
+
+def test_create_client_defaults_to_openrouter_when_both_keys_exist(monkeypatch) -> None:
+    monkeypatch.delenv("POEM_PROVIDER", raising=False)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    client = create_client()
+    assert isinstance(client, ModelClient)
+    assert client.provider_name == "openrouter"

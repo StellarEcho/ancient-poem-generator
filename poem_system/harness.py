@@ -6,7 +6,7 @@ import os
 import time
 from dataclasses import dataclass, field
 
-from .client import KEY_ENV, ModelClient, RawModelResult
+from .client import RawModelResult, create_client
 from .debug_log import DebugRecorder
 from .fallback import fallback_poem, topic_seed
 from .local_fix import fix_poem
@@ -83,6 +83,7 @@ class HarnessResult:
     model_calls: int
     latency_ms: float
     model_used: str | None = None
+    provider: str | None = None
     raw_model_content: str | None = None
     model_error: str | None = None
     model_usage: dict | None = None
@@ -113,15 +114,17 @@ def run_harness(
     source = "fallback"
     model_calls = 0
     raw_result: RawModelResult | None = None
+    provider: str | None = None
     parse_ok = False
     local_fix_ok = False
     local_fix_changed = False
 
     if not offline:
         client: object | None = model_client
-        if client is None and os.environ.get(KEY_ENV):
-            client = ModelClient(timeout_s=timeout_s)
+        if client is None:
+            client = create_client(timeout_s=timeout_s)
         if client is not None:
+            provider = getattr(client, "provider_name", None)
             model_calls = 1
             try:
                 raw_result = client.generate(build_messages(brief))  # type: ignore[attr-defined]
@@ -162,6 +165,7 @@ def run_harness(
         model_calls=model_calls,
         latency_ms=latency_ms,
         model_used=raw_result.model if raw_result else None,
+        provider=provider,
         raw_model_content=raw_result.content if raw_result else None,
         model_error=raw_result.error if raw_result else None,
         model_usage=raw_result.usage if raw_result else None,
@@ -181,6 +185,7 @@ def run_harness(
             model_calls=model_calls,
             latency_ms=latency_ms,
             model_used=result.model_used,
+            provider=result.provider,
             raw_model_content=result.raw_model_content,
             model_error=result.model_error,
             model_usage=result.model_usage,

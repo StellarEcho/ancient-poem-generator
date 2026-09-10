@@ -11,10 +11,10 @@ from poem_system.validate import validate_poem
 
 pytestmark = pytest.mark.network
 
-_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+_KEY = os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("OPENROUTER_API_KEY", "")
 _NEEDS_KEY = pytest.mark.skipif(
     not _KEY,
-    reason="OPENROUTER_API_KEY 未配置",
+    reason="DEEPSEEK_API_KEY / OPENROUTER_API_KEY 未配置",
 )
 
 
@@ -43,7 +43,11 @@ def test_free_route_smoke(topic: str) -> None:
     assert report.errors == []
     if result.source == "model":
         assert result.model_used is not None
-        assert result.model_used.endswith(":free")
+        provider = os.environ.get("POEM_PROVIDER", "")
+        if provider == "deepseek":
+            assert result.model_used == "deepseek-flash"
+        else:
+            assert result.model_used.endswith(":free")
     print(
         f"\n[{topic}] source={result.source} model={result.model_used} "
         f"latency_ms={result.latency_ms:.1f}"

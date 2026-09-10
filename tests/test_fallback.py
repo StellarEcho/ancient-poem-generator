@@ -63,3 +63,14 @@ def test_fallback_line3_candidates_match_target_rhyme() -> None:
     assert candidates
     assert all(rhyme_key(line[-1]) == "uang" for line in candidates)
     assert candidates[0] == "客梦落寒霜"
+
+
+def test_extra_line3_candidates_cover_observed_missing_finals() -> None:
+    brief = normalize_topic("")
+    for target in ["van", "ie", "in", "ua", "en", "uei", "eng", "ing"]:
+        candidates = fallback_line3_candidates(brief, target)
+        assert candidates, target
+        for line in candidates:
+            assert len(line) == 5
+            assert all("\u4e00" <= ch <= "\u9fff" for ch in line)
+            assert rhyme_key(line[-1]) == target

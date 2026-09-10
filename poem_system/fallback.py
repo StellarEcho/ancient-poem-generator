@@ -148,6 +148,46 @@ _STANZAS: list[_Stanza] = [
     ),
 ]
 
+# 通用第 3 句白名单：覆盖主句料库里缺失的韵母，供本地修补使用。
+_EXTRA_LINE3: list[tuple[str, frozenset[str]]] = [
+    ("归云抱故园", frozenset({"园", "云", "归", "乡"})),
+    ("青山月正圆", frozenset({"山", "月", "圆", "夜"})),
+    ("孤舟泊古原", frozenset({"舟", "原", "远", "孤"})),
+    ("远岫接平川", frozenset({"远", "川", "山", "水"})),
+    ("钟声出远川", frozenset({"钟", "远", "山", "水"})),
+    ("孤灯守长夜", frozenset({"孤", "灯", "夜", "客"})),
+    ("长亭又送别", frozenset({"别", "柳", "舟", "远"})),
+    ("清风伴永夜", frozenset({"风", "夜", "月", "清"})),
+    ("清泉洗客心", frozenset({"泉", "心", "客", "山"})),
+    ("空山闻鸟音", frozenset({"山", "鸟", "音", "云"})),
+    ("月照故人心", frozenset({"月", "心", "友", "夜"})),
+    ("钟声入暮深", frozenset({"钟", "深", "晚", "山"})),
+    ("灯影照归人", frozenset({"灯", "人", "归", "夜"})),
+    ("风雪掩柴门", frozenset({"风", "雪", "门", "寒"})),
+    ("风翻满院花", frozenset({"风", "花", "春", "院"})),
+    ("烟雨湿窗纱", frozenset({"雨", "花", "窗", "烟"})),
+    ("春深落尽花", frozenset({"春", "花", "深", "雨"})),
+    ("归心向天涯", frozenset({"归", "心", "远", "家"})),
+    ("云开见晚霞", frozenset({"云", "霞", "晚", "山"})),
+    ("明月送清辉", frozenset({"月", "辉", "夜", "清"})),
+    ("长歌入翠微", frozenset({"歌", "微", "山", "远"})),
+    ("鸿雁向南飞", frozenset({"雁", "飞", "远", "秋"})),
+    ("寒江映晚灯", frozenset({"江", "灯", "晚", "夜"})),
+    ("秋风送雁声", frozenset({"秋", "风", "雁", "声"})),
+    ("孤舟对短灯", frozenset({"孤", "舟", "灯", "夜"})),
+    ("远岫入青冥", frozenset({"远", "山", "青", "云"})),
+    ("夜雨洗秋清", frozenset({"雨", "秋", "清", "夜"})),
+    ("疏星映短亭", frozenset({"星", "亭", "夜", "远"})),
+    ("云开见远鸿", frozenset({"云", "鸿", "远", "天"})),
+    ("寒山闻晚钟", frozenset({"山", "钟", "晚", "寒"})),
+    ("孤舟泊江东", frozenset({"舟", "江", "东", "远"})),
+    ("一雁度清秋", frozenset({"雁", "秋", "清", "远"})),
+    ("灯前忆旧游", frozenset({"灯", "游", "夜", "友"})),
+    ("孤帆带客愁", frozenset({"舟", "帆", "客", "愁"})),
+    ("残阳照小楼", frozenset({"阳", "楼", "晚", "城"})),
+    ("归梦落汀洲", frozenset({"归", "梦", "洲", "水"})),
+]
+
 
 def topic_seed(topic: str) -> int:
     """跨进程稳定的主题种子：禁止内置 hash()（随机盐）。"""
@@ -183,6 +223,13 @@ def fallback_line3_candidates(brief: PoemBrief, target_key: str) -> list[str]:
         except ValueError:
             continue
         scored.append((len(stanza.tags & imagery), line, stanza.title))
+    for line, tags in _EXTRA_LINE3:
+        try:
+            if rhyme_key(line[-1]) != target_key:
+                continue
+        except ValueError:
+            continue
+        scored.append((len(tags & imagery), line, "extra"))
     scored.sort(key=lambda item: (-item[0], item[2], item[1]))
     return [line for _, line, _ in scored]
 
