@@ -16,7 +16,8 @@
 
 - 大语言模型仅作为受控生成组件，输出不被直接信任。
 - 系统自行完成结果解析、格式检查、韵脚检查、失败恢复与最终输出保证。
-- 实验与测试统一使用 OpenRouter 免费模型 `openrouter/free`。
+- 默认（提交验收）使用 OpenRouter 免费路由 `openrouter/free`；
+  显式设置 `POEM_PROVIDER=deepseek` 时使用 `deepseek-flash` 测试。
 - 无 API Key、`POEM_OFFLINE=1` 或客户端异常时，静默走本地确定性兜底。
 
 ## 安装
@@ -26,7 +27,14 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt          # 运行依赖
 pip install -r requirements-dev.txt      # 测试依赖（可选）
+
+# 默认（提交验收路径）
 export OPENROUTER_API_KEY=你的Key
+
+# 可选：用 DeepSeek flash 做测试（只支持 flash，默认关闭思考）
+export POEM_PROVIDER=deepseek
+export DEEPSEEK_API_KEY=你的Key
+export DEEPSEEK_THINKING=disabled
 ```
 
 > macOS 上使用 python.org 安装的 Python 若报
@@ -60,12 +68,14 @@ CLI 会把返回 JSON 打印到 stdout，并在本地再校验一次：
 ```bash
 python -m pytest -q                      # 单元 + 假客户端 + 离线 fuzz，默认不联网
 OPENROUTER_API_KEY=xxx python -m pytest -m network -q   # 真实免费路由冒烟
+POEM_PROVIDER=deepseek DEEPSEEK_API_KEY=xxx python -m pytest -m network -q  # DeepSeek flash
 ```
 
 ## 免费路由批量采样
 
 ```bash
-OPENROUTER_API_KEY=xxx python scripts/run_free_route_experiment.py \
+POEM_PROVIDER=deepseek DEEPSEEK_API_KEY=xxx \
+python scripts/run_free_route_experiment.py \
     --repeats 3 --concurrency 3 --timeout 15
 ```
 
@@ -80,6 +90,9 @@ OPENROUTER_API_KEY=xxx python scripts/run_free_route_experiment.py \
 
 环境变量：
 
-- `OPENROUTER_API_KEY`：真实模型调用；
+- `POEM_PROVIDER`：`openrouter`（默认）或 `deepseek`；
+- `OPENROUTER_API_KEY`：默认 provider 的 Key；
+- `DEEPSEEK_API_KEY`：DeepSeek provider 的 Key；
+- `DEEPSEEK_THINKING=disabled`：关闭 DeepSeek 思考模式（默认即关闭）；
 - `POEM_OFFLINE=1`：即使有 Key 也强制兜底；
 - `POEM_DEBUG=1`：把运行记录写入 `artifacts/runs/`（默认静默）。

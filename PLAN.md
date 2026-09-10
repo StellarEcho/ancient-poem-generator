@@ -16,7 +16,8 @@
 | 合法字符 | 只认 `U+4E00–U+9FFF` 基本区汉字；ASCII、全角、空格、数字、〇、注音、扩展区一律拒绝 |
 | 确定性种子 | 使用 `hashlib.blake2s(topic, digest_size=8)` 的稳定摘要；**绝不使用内置 `hash()`** |
 | 重复整句 | `DUP_LINE` 是**质量警告**，不是合规错误；`ok=True` 但仍上报，供文学性统计 |
-| API 调用 | 普通 chat completions，**不使用 JSON Schema / response_format**，避免过滤掉免费模型 |
+| API 调用 | 普通 chat completions，**不使用 JSON Schema / response_format** |
+| Provider | 默认提交路径 `openrouter/free`；显式 `POEM_PROVIDER=deepseek` 时用 `deepseek-flash`（唯一模型，关闭思考） |
 | 工件记录 | 默认静默；`POEM_DEBUG=1` 才落盘；写失败绝不影响返回 |
 | 项目形态 | 单模块小项目 + pypinyin，不上 LangChain、向量库、本地小模型 |
 
@@ -41,7 +42,8 @@ def generate_poem(topic: str) -> dict:
 运行要求：
 
 - 依赖只保留 `pypinyin`，其余用标准库。
-- 有 `OPENROUTER_API_KEY` 时默认走一次 `openrouter/free`；
+- 默认走一次 `openrouter/free`（提交验收路径）；显式
+  `POEM_PROVIDER=deepseek` 时走 `deepseek-flash`；
   没有 Key、显式 `--offline`、调用失败或输出不合格时静默走兜底，不崩溃。
 - `generate_poem` 返回前必须再次全量校验；失败即丢弃模型产物改走兜底，
   绝不把非法 JSON / 原始模型文本往外扔。
@@ -215,8 +217,11 @@ def topic_seed(topic: str) -> int:
 
 客户端约束：
 
-- 端点与模型是常量：`https://openrouter.ai/api/v1/chat/completions` +
-  `openrouter/free`；**不提供用户可选模型的产品口子**。
+- 默认 provider 是 OpenRouter：`https://openrouter.ai/api/v1/chat/completions`
+  + `openrouter/free`；提交验收不设 `POEM_PROVIDER` 时走这条路径。
+- 显式设置 `POEM_PROVIDER=deepseek` 时使用 `https://api.deepseek.com`
+  + `deepseek-flash`，并通过 `thinking.type=disabled` 关闭思考。
+- **不提供用户任选任意模型的口子**：每个 provider 的模型都是常量。
 - 普通 chat completions，请求体不加 `response_format`，避免过滤掉
   当前可用的免费模型。
 - Key 只从 `OPENROUTER_API_KEY` 读取；请求/日志/工件永不落 Key。
@@ -389,7 +394,7 @@ ancient_poem/
 │   ├── normalize.py        # topic → PoemBrief
 │   ├── fallback.py         # 构造即合法的确定性兜底
 │   ├── local_fix.py        # 删非法字符/换第 3 句末字
-│   ├── client.py           # openrouter/free 客户端（可注入假客户端）
+│   ├── client.py           # openrouter/free + deepseek-flash（可注入假客户端）
 │   ├── harness.py          # 单线流程 + 预算 + 终态断言
 │   └── debug_log.py        # 默认静默的 Recorder
 └── tests/
@@ -414,7 +419,7 @@ ancient_poem/
 | M1 校验 | `feat: add validator and rhyme checker` | 汉字/字数/四句/韵脚 + 固定向量单测全绿，离线可证明底线 |
 | M2 兜底 | `feat: add topic normalizer and deterministic fallback` | 无网/无 Key 也能输出与 topic 有关联且合规的诗；normalize 与 fallback 单测通过 |
 | M3 接线 | `feat: add parser, local fixer, and model client` + `feat: wire harness and CLI test entry` | 解析→本地修补→单次模型调用→兜底收口；假客户端故障矩阵与 fuzz 通过 |
-| M4 实测 | `test: add fake-client matrix and fuzz` + `docs: usage and run notes` | 真实 `openrouter/free` 固定矩阵抽样，记录延迟/Token/兜底率，锁定默认策略；README 可让验收方直接运行 |
+| M4 实测 | `test: add fake-client matrix and fuzz` + `docs: usage and run notes` | 默认路径用 `openrouter/free` 固定矩阵抽样；DeepSeek flash 作为显式可选 provider 对照；记录延迟/Token/兜底率；README 可让验收方直接运行 |
 
 注意：M3 的两个 `feat` 必须拆成两次 commit，不能揉在一起。每次提交后：
 
