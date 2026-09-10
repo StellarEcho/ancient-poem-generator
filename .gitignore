@@ -28,3 +28,6 @@ artifacts/
 # 编辑器
 .idea/
 .vscode/
+
+# 仅本地保留的面试资料
+初面-实战题.pdf
